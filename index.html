@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>과제 마감일 관리</title>
+<style>
+  :root {
+    --bg: #faf6e9;
+    --card: #ffffff;
+    --text: #2f3640;
+    --muted: #7a8391;
+    --line: #ebe5d2;
+    --mustard: #d4a72c;
+    --mustard-soft: #fbf1cf;
+    --sage: #8aa68a;
+    --sage-dark: #5f7f62;
+    --sage-soft: #e8f0e6;
+    --bluegray: #6b7f94;
+    --bluegray-soft: #e7ecf1;
+    --danger: #b5543f;
+    --danger-soft: #f9e6e1;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 28px 16px 48px; }
+  header { margin-bottom: 20px; }
+  header h1 { margin: 0; font-size: 1.7rem; color: var(--bluegray); }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: .95rem; }
+  .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 2px 10px rgba(120, 100, 40, .06);
+  }
+  .card h2 { margin: 0 0 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+  .card h2::before { content: ""; width: 6px; height: 18px; border-radius: 3px; background: var(--mustard); }
+  .list-card h2::before { background: var(--sage); }
+
+  label { display: block; font-size: .88rem; font-weight: 600; margin: 0 0 6px; color: var(--bluegray); }
+  input[type="text"], input[type="date"] {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    font: inherit;
+    background: #fffdf8;
+    color: var(--text);
+  }
+  input:focus { outline: none; border-color: var(--mustard); box-shadow: 0 0 0 3px var(--mustard-soft); }
+  .field { margin-bottom: 14px; }
+  .error {
+    min-height: 20px;
+    margin: 0 0 10px;
+    color: var(--danger);
+    font-size: .88rem;
+    font-weight: 600;
+  }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; transition: filter .15s, transform .05s; }
+  button:hover { filter: brightness(.95); }
+  button:active { transform: translateY(1px); }
+  .btn-add { width: 100%; padding: 12px; background: var(--mustard); color: #fff; font-weight: 700; font-size: 1rem; }
+
+  .stats { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .stat { flex: 1; min-width: 110px; padding: 12px 14px; border-radius: 12px; background: var(--bluegray-soft); }
+  .stat.pending { background: var(--mustard-soft); }
+  .stat span { display: block; font-size: .8rem; color: var(--muted); }
+  .stat strong { font-size: 1.5rem; }
+
+  .toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+  .btn-clear { padding: 8px 14px; background: var(--bluegray-soft); color: var(--bluegray); font-weight: 600; font-size: .88rem; }
+
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px; border: 1.5px solid var(--line); border-radius: 12px; background: #fffdf8;
+  }
+  .item.urgent { border-color: var(--mustard); background: var(--mustard-soft); box-shadow: 0 0 0 3px rgba(212,167,44,.15); }
+  .item.overdue { border-color: var(--danger); background: var(--danger-soft); }
+  .item.done { background: #f6f6f2; opacity: .75; }
+  .item.done .name { text-decoration: line-through; color: var(--muted); }
+  .badge {
+    flex: 0 0 auto; min-width: 72px; text-align: center;
+    padding: 6px 8px; border-radius: 999px; font-weight: 700; font-size: .85rem;
+    background: var(--sage-soft); color: var(--sage-dark);
+  }
+  .item.urgent .badge { background: var(--mustard); color: #fff; }
+  .item.overdue .badge { background: var(--danger); color: #fff; }
+  .item.done .badge { background: var(--bluegray-soft); color: var(--bluegray); }
+  .info { flex: 1; min-width: 0; }
+  .name { font-weight: 700; word-break: break-all; }
+  .date { font-size: .83rem; color: var(--muted); }
+  .actions { display: flex; gap: 6px; flex: 0 0 auto; }
+  .actions button { padding: 7px 11px; font-size: .84rem; font-weight: 600; }
+  .btn-done { background: var(--sage); color: #fff; }
+  .btn-undo { background: var(--bluegray); color: #fff; }
+  .btn-del { background: #fff; color: var(--danger); border: 1.5px solid var(--danger-soft); }
+  .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+    .item { flex-wrap: wrap; }
+    .info { flex-basis: calc(100% - 100px); }
+    .actions { width: 100%; justify-content: flex-end; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📚 과제 마감일 관리</h1>
+    <p>마감일과 우선순위를 한눈에 확인하세요.</p>
+  </header>
+
+  <div class="layout">
+    <!-- 과제 등록 영역 -->
+    <section class="card" aria-labelledby="addTitle">
+      <h2 id="addTitle">과제 등록</h2>
+      <form id="addForm" novalidate>
+        <div class="field">
+          <label for="nameInput">과제명</label>
+          <input type="text" id="nameInput" maxlength="50" placeholder="예) 경제학 중간 레포트" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="dateInput">마감일</label>
+          <input type="date" id="dateInput">
+        </div>
+        <p class="error" id="errorMsg" role="alert"></p>
+        <button type="submit" class="btn-add">등록</button>
+      </form>
+    </section>
+
+    <!-- 과제 목록 영역 -->
+    <section class="card list-card" aria-labelledby="listTitle">
+      <h2 id="listTitle">과제 목록</h2>
+      <div class="stats">
+        <div class="stat"><span>전체 과제</span><strong id="totalCount">0</strong></div>
+        <div class="stat pending"><span>미완료 과제</span><strong id="pendingCount">0</strong></div>
+      </div>
+      <div class="toolbar">
+        <button type="button" class="btn-clear" id="clearDone">완료 항목 정리</button>
+      </div>
+      <ul id="taskList"></ul>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  var KEY = "assignment-deadlines-v1";
+  var tasks = load();
+
+  var form = document.getElementById("addForm");
+  var nameInput = document.getElementById("nameInput");
+  var dateInput = document.getElementById("dateInput");
+  var errorMsg = document.getElementById("errorMsg");
+  var listEl = document.getElementById("taskList");
+  var totalEl = document.getElementById("totalCount");
+  var pendingEl = document.getElementById("pendingCount");
+  var clearBtn = document.getElementById("clearDone");
+
+  /* ---------- 날짜 유틸 ---------- */
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+  function parseDate(str) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str || "");
+    if (!m) return null;
+    var y = +m[1], mo = +m[2], d = +m[3];
+    var utc = Date.UTC(y, mo - 1, d);
+    var chk = new Date(utc);
+    if (chk.getUTCFullYear() !== y || chk.getUTCMonth() !== mo - 1 || chk.getUTCDate() !== d) return null;
+    return utc;
+  }
+  function diffDays(str) {
+    return Math.round((parseDate(str) - parseDate(todayStr())) / 86400000);
+  }
+  function label(diff) {
+    if (diff === 0) return "D-Day";
+    if (diff > 0) return "D-" + diff;
+    return Math.abs(diff) + "일 지남";
+  }
+  function formatKo(str) {
+    var p = str.split("-");
+    var days = ["일", "월", "화", "수", "목", "금", "토"];
+    var dow = days[new Date(parseDate(str)).getUTCDay()];
+    return p[0] + "년 " + (+p[1]) + "월 " + (+p[2]) + "일 (" + dow + ")";
+  }
+
+  /* ---------- 저장/불러오기 ---------- */
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function (t) {
+        return t && typeof t.name === "string" && parseDate(t.due) !== null;
+      }).map(function (t) {
+        return { id: String(t.id), name: t.name, due: t.due, done: !!t.done };
+      });
+    } catch (e) { return []; }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(tasks)); }
+    catch (e) { showError("브라우저 저장소에 저장할 수 없습니다. (시크릿 모드이거나 저장 공간이 부족할 수 있습니다.)"); }
+  }
+
+  /* ---------- 메시지 ---------- */
+  function showError(msg) { errorMsg.textContent = msg; }
+
+  /* ---------- 렌더링 ---------- */
+  function sorted() {
+    return tasks.slice().sort(function (a, b) {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      var da = parseDate(a.due), db = parseDate(b.due);
+      if (da !== db) return da - db;
+      return a.id < b.id ? -1 : 1;
+    });
+  }
+
+  function makeBtn(text, cls, action, id) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = cls;
+    b.textContent = text;
+    b.setAttribute("data-action", action);
+    b.setAttribute("data-id", id);
+    return b;
+  }
+
+  function render() {
+    dateInput.min = todayStr();
+    listEl.innerHTML = "";
+    var list = sorted();
+
+    if (list.length === 0) {
+      var li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = "등록된 과제가 없습니다. 왼쪽에서 과제를 추가해 보세요.";
+      listEl.appendChild(li);
+    }
+
+    list.forEach(function (t) {
+      var diff = diffDays(t.due);
+      var li = document.createElement("li");
+      var cls = "item";
+      if (t.done) cls += " done";
+      else if (diff < 0) cls += " overdue";
+      else if (diff <= 3) cls += " urgent";
+      li.className = cls;
+
+      var badge = document.createElement("div");
+      badge.className = "badge";
+      badge.textContent = label(diff);
+
+      var info = document.createElement("div");
+      info.className = "info";
+      var name = document.createElement("div");
+      name.className = "name";
+      name.textContent = t.name;
+      var date = document.createElement("div");
+      date.className = "date";
+      date.textContent = "마감 " + formatKo(t.due) + (t.done ? " · 완료" : "");
+      info.appendChild(name);
+      info.appendChild(date);
+
+      var actions = document.createElement("div");
+      actions.className = "actions";
+      actions.appendChild(t.done
+        ? makeBtn("되돌리기", "btn-undo", "toggle", t.id)
+        : makeBtn("완료", "btn-done", "toggle", t.id));
+      actions.appendChild(makeBtn("삭제", "btn-del", "delete", t.id));
+
+      li.appendChild(badge);
+      li.appendChild(info);
+      li.appendChild(actions);
+      listEl.appendChild(li);
+    });
+
+    var pending = tasks.filter(function (t) { return !t.done; }).length;
+    totalEl.textContent = tasks.length;
+    pendingEl.textContent = pending;
+  }
+
+  /* ---------- 이벤트 ---------- */
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = nameInput.value.trim();
+    var due = dateInput.value;
+
+    if (!name) { showError("과제명을 입력해 주세요."); nameInput.focus(); return; }
+    if (!due) { showError("마감일을 선택해 주세요."); dateInput.focus(); return; }
+    if (parseDate(due) === null) { showError("올바른 날짜 형식이 아닙니다. (예: 2026-11-30)"); dateInput.focus(); return; }
+    if (diffDays(due) < 0) { showError("오늘보다 이전 날짜는 마감일로 등록할 수 없습니다."); dateInput.focus(); return; }
+
+    tasks.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      name: name,
+      due: due,
+      done: false
+    });
+    save();
+    showError("");
+    form.reset();
+    render();
+    nameInput.focus();
+  });
+
+  [nameInput, dateInput].forEach(function (el) {
+    el.addEventListener("input", function () { showError(""); });
+  });
+
+  listEl.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    var id = btn.getAttribute("data-id");
+    var action = btn.getAttribute("data-action");
+
+    if (action === "toggle") {
+      tasks.forEach(function (t) { if (t.id === id) t.done = !t.done; });
+    } else if (action === "delete") {
+      tasks = tasks.filter(function (t) { return t.id !== id; });
+    }
+    save();
+    render();
+  });
+
+  clearBtn.addEventListener("click", function () {
+    var doneCount = tasks.filter(function (t) { return t.done; }).length;
+    if (doneCount === 0) { showError("정리할 완료 항목이 없습니다."); return; }
+    if (!confirm("완료된 과제 " + doneCount + "개를 모두 삭제할까요?")) return;
+    tasks = tasks.filter(function (t) { return !t.done; });
+    save();
+    showError("");
+    render();
+  });
+
+  // 날짜가 바뀌었을 때(자정 경과, 탭 복귀) 남은 일수 갱신
+  var lastDay = todayStr();
+  function refreshIfDayChanged() {
+    if (todayStr() !== lastDay) { lastDay = todayStr(); render(); }
+  }
+  setInterval(refreshIfDayChanged, 60000);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) refreshIfDayChanged();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
